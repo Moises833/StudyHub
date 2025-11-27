@@ -6,6 +6,8 @@ import Register from "./pages/public/Register";
 import ForgetPassword from "./pages/public/ForgetPassword";
 import ConfirmAccount from "./pages/public/ConfirmAccount";
 import Dashboard from "./pages/dashboard/Dashboard";
+import Proyectos from "./pages/dashboard/Proyectos";
+import Calendario from "./pages/dashboard/Calendario";
 
 function App() {
   return (
@@ -23,6 +25,8 @@ function App() {
           {/* Area protegida - Dashboard */}
           <Route path="/dashboard" element={<DashboardLayout />}>
             <Route index element={<Dashboard />} />
+            <Route path="proyectos" element={<Proyectos />} />
+            <Route path="calendario" element={<Calendario />} />
           </Route>
         </Routes>
       </BrowserRouter>

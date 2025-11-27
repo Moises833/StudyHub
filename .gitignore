@@ -12,9 +12,12 @@ dist
 dist-ssr
 *.local
 
+<<<<<<< HEAD
 # Dependencies
 node_modules
 
+=======
+>>>>>>> origin/main
 # Editor directories and files
 
 .vscode/*
