@@ -28,7 +28,7 @@ const Dashboard = () => {
           </div>
         </Link>
         {/*RECUADRO DE TAREAS*/}
-        <Link to="/dashboard/tareas" className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-green-500 cursor-pointer hover:shadow-xl transition-shadow">
+        <Link to="/dashboard/proyectos" className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-green-500 cursor-pointer hover:shadow-xl transition-shadow">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-gray-600 text-sm font-medium">Tareas</p>
@@ -42,7 +42,7 @@ const Dashboard = () => {
           </div>
         </Link>
         {/*RECUADRO DE PENDIENTES*/}
-        <Link to="/dashboard/tareas" className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-yellow-500 cursor-pointer hover:shadow-xl transition-shadow">
+        <Link to="/dashboard/proyectos" className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-yellow-500 cursor-pointer hover:shadow-xl transition-shadow">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-gray-600 text-sm font-medium">Pendientes</p>
@@ -56,7 +56,7 @@ const Dashboard = () => {
           </div>
         </Link>
         {/*RECUADRO DE COMPLETADOS*/}
-        <Link to="/dashboard/tareas" className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-purple-500 cursor-pointer hover:shadow-xl transition-shadow">
+        <Link to="/dashboard/proyectos" className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-purple-500 cursor-pointer hover:shadow-xl transition-shadow">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-gray-600 text-sm font-medium">Completados</p>
