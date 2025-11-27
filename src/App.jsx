@@ -8,6 +8,7 @@ import ConfirmAccount from "./pages/public/ConfirmAccount";
 import Dashboard from "./pages/dashboard/Dashboard";
 import Proyectos from "./pages/dashboard/Proyectos";
 import Calendario from "./pages/dashboard/Calendario";
+import Perfil from "./pages/dashboard/Perfil";
 
 function App() {
   return (
@@ -27,6 +28,7 @@ function App() {
             <Route index element={<Dashboard />} />
             <Route path="proyectos" element={<Proyectos />} />
             <Route path="calendario" element={<Calendario />} />
+            <Route path="perfil" element={<Perfil />} />
           </Route>
         </Routes>
       </BrowserRouter>
