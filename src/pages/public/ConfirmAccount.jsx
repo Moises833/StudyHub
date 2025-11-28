@@ -1,7 +1,23 @@
-import { useParams, Link } from "react-router-dom";
+import { useState } from "react";
+import { useParams, Link, useNavigate } from "react-router-dom";
 
 const ConfirmAccount = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
+  const [token, setToken] = useState("");
+  const [error, setError] = useState("");
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    // Aquí iría la lógica para verificar el token con el backend
+    // Por ahora, simulamos que es correcto si tiene 6 dígitos
+    if (token.length === 6) {
+      alert("Cuenta confirmada exitosamente");
+      navigate("/");
+    } else {
+      setError("Código inválido");
+    }
+  };
 
   return (
     <>
@@ -14,7 +30,7 @@ const ConfirmAccount = () => {
         </span>
       </div>
       <div className="bg-gray-200 p-6 sm:p-8 md:p-10 w-full max-w-sm mx-auto rounded-xl shadow-2xl transition-all duration-300">
-        <form action="">
+        <form onSubmit={handleSubmit}>
           <h2 className="text-center text-2xl sm:text-3xl font-bold text-gray-800 mb-6 sm:mb-8 tracking-tight">
             CONFIRMAR CUENTA
           </h2>
@@ -22,6 +38,12 @@ const ConfirmAccount = () => {
           <p className="text-gray-600 text-xs sm:text-sm mb-4 sm:mb-6 text-center">
             Ingresa el código de confirmación que recibiste en tu correo electrónico para activar tu cuenta.
           </p>
+
+          {error && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+              <span className="block sm:inline">{error}</span>
+            </div>
+          )}
 
           {/* Campo Código de Confirmación */}
           <div className="mb-4 sm:mb-6">
@@ -38,6 +60,9 @@ const ConfirmAccount = () => {
               id="token"
               placeholder="000000"
               maxLength="6"
+              value={token}
+              onChange={(e) => setToken(e.target.value)}
+              required
             />
           </div>
 

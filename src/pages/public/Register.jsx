@@ -1,6 +1,59 @@
-import { Link } from "react-router-dom";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 
 const Register = () => {
+  const navigate = useNavigate();
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    password: "",
+    password_confirmation: "",
+  });
+  const [error, setError] = useState("");
+
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value,
+    });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+
+    if (formData.password !== formData.password_confirmation) {
+      setError("Las contraseñas no coinciden");
+      return;
+    }
+
+    try {
+      const response = await fetch("http://localhost:3000/api/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          password: formData.password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Redirigir al login o a una página de éxito
+        navigate("/");
+      } else {
+        setError(data.message || "Error al registrarse");
+      }
+    } catch (err) {
+      setError("Error de conexión con el servidor");
+      console.error(err);
+    }
+  };
+
   return (
     <>
       <div className="md:p-12 py-6 px-4 sm:px-8 rounded-lg mb-8 md:mb-0 text-center md:text-left">
@@ -12,10 +65,16 @@ const Register = () => {
         </span>
       </div>
       <div className="bg-gray-200 p-6 sm:p-8 md:p-10 w-full max-w-sm mx-auto rounded-xl shadow-2xl transition-all duration-300">
-        <form action="">
+        <form onSubmit={handleSubmit}>
           <h2 className="text-center text-2xl sm:text-3xl font-bold text-gray-800 mb-6 sm:mb-8 tracking-tight">
             REGISTRO
           </h2>
+
+          {error && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+              <span className="block sm:inline">{error}</span>
+            </div>
+          )}
 
           {/* Campo Nombre */}
           <div className="mb-4 sm:mb-6">
@@ -31,6 +90,9 @@ const Register = () => {
               name="name"
               id="name"
               placeholder="Juan Pérez"
+              value={formData.name}
+              onChange={handleChange}
+              required
             />
           </div>
 
@@ -48,6 +110,9 @@ const Register = () => {
               name="email"
               id="email"
               placeholder="tu.correo@ejemplo.com"
+              value={formData.email}
+              onChange={handleChange}
+              required
             />
           </div>
 
@@ -65,6 +130,9 @@ const Register = () => {
               name="password"
               id="password"
               placeholder="••••••••"
+              value={formData.password}
+              onChange={handleChange}
+              required
             />
           </div>
 
@@ -82,6 +150,9 @@ const Register = () => {
               name="password_confirmation"
               id="password_confirmation"
               placeholder="••••••••"
+              value={formData.password_confirmation}
+              onChange={handleChange}
+              required
             />
           </div>
 

@@ -1,6 +1,50 @@
-import { Link } from "react-router-dom";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 
 const Login = () => {
+  const navigate = useNavigate();
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+  });
+  const [error, setError] = useState("");
+
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value,
+    });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+
+    try {
+      const response = await fetch("http://localhost:3000/api/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Guardar usuario en localStorage (opcional)
+        localStorage.setItem("user", JSON.stringify(data.user));
+        // Redirigir al dashboard
+        navigate("/dashboard");
+      } else {
+        setError(data.message || "Credenciales inválidas");
+      }
+    } catch (err) {
+      setError("Error de conexión con el servidor");
+      console.error(err);
+    }
+  };
+
   return (
     <>
       <div className="md:p-12 py-6 px-4 sm:px-8 rounded-lg mb-8 md:mb-0 text-center md:text-left">
@@ -12,10 +56,16 @@ const Login = () => {
         </span>
       </div>
       <div className="bg-gray-200 p-6 sm:p-8 md:p-10 w-full max-w-sm mx-auto rounded-xl shadow-2xl transition-all duration-300">
-        <form action="">
+        <form onSubmit={handleSubmit}>
           <h2 className="text-center text-2xl sm:text-3xl font-bold text-gray-800 mb-6 sm:mb-8 tracking-tight">
             LOGIN
           </h2>
+
+          {error && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+              <span className="block sm:inline">{error}</span>
+            </div>
+          )}
 
           {/* Campo Email */}
           <div className="mb-4 sm:mb-6">
@@ -31,6 +81,9 @@ const Login = () => {
               name="email"
               id="email"
               placeholder="tu.correo@ejemplo.com"
+              value={formData.email}
+              onChange={handleChange}
+              required
             />
           </div>
 
@@ -48,6 +101,9 @@ const Login = () => {
               name="password"
               id="password"
               placeholder="••••••••"
+              value={formData.password}
+              onChange={handleChange}
+              required
             />
             {/* Opción de "Olvidé mi contraseña" */}
             <div className="text-right mt-2">
@@ -61,13 +117,14 @@ const Login = () => {
           </div>
 
           {/* Botón de Submit */}
-          <button
-            className="w-full bg-sky-900 text-white py-2.5 sm:py-3 rounded-lg font-bold uppercase tracking-wider hover:bg-sky-700 transition duration-200 ease-in-out shadow-md shadow-blue-500/50 transform hover:scale-[1.01] hover:cursor-pointer text-sm sm:text-base"
-            type="submit"
-          >
-            Acceder a StudyHub
-          </button>
-
+          <Link to="/dashboard">
+            <button
+              className="w-full bg-sky-900 text-white py-2.5 sm:py-3 rounded-lg font-bold uppercase tracking-wider hover:bg-sky-700 transition duration-200 ease-in-out shadow-md shadow-blue-500/50 transform hover:scale-[1.01] hover:cursor-pointer text-sm sm:text-base"
+              type="submit"
+            >
+              Acceder a StudyHub
+            </button>
+          </Link>
           {/* Enlace de Registro */}
           <div className="text-center mt-4 sm:mt-6">
             <p className="text-sky-900 text-xs sm:text-sm">
