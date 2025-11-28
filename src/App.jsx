@@ -10,6 +10,8 @@ import Proyectos from "./pages/dashboard/Proyectos";
 import Calendario from "./pages/dashboard/Calendario";
 import Perfil from "./pages/dashboard/Perfil";
 
+import Tareas from "./pages/dashboard/Tareas";
+
 function App() {
   return (
     <>
@@ -22,11 +24,12 @@ function App() {
             <Route path="olvide-password" element={<ForgetPassword />} />
             <Route path="confirmar/:id" element={<ConfirmAccount />} />
           </Route>
-          
+
           {/* Area protegida - Dashboard */}
           <Route path="/dashboard" element={<DashboardLayout />}>
             <Route index element={<Dashboard />} />
             <Route path="proyectos" element={<Proyectos />} />
+            <Route path="tareas" element={<Tareas />} />
             <Route path="calendario" element={<Calendario />} />
             <Route path="perfil" element={<Perfil />} />
           </Route>
