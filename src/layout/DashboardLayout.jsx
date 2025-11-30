@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
+import { getCurrentUser, logoutUser } from "../helpers/auth";
 
 const DashboardLayout = () => {
   const location = useLocation();
@@ -7,6 +8,14 @@ const DashboardLayout = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const menuRef = useRef(null);
+
+  const user = getCurrentUser();
+
+  useEffect(() => {
+    if (!user) {
+      navigate("/");
+    }
+  }, [user, navigate]);
 
   const isActive = (path) => {
     return location.pathname === path;
@@ -30,9 +39,7 @@ const DashboardLayout = () => {
   }, [isMenuOpen]);
 
   const handleLogout = () => {
-    // Aquí puedes agregar la lógica de cierre de sesión
-    // Por ejemplo, limpiar tokens, localStorage, etc.
-    console.log("Cerrando sesión...");
+    logoutUser();
     navigate("/");
     setIsMenuOpen(false);
   };
@@ -42,6 +49,8 @@ const DashboardLayout = () => {
     navigate("/dashboard/perfil");
     setIsMenuOpen(false);
   };
+
+  if (!user) return null;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -87,11 +96,11 @@ const DashboardLayout = () => {
                   className="flex items-center gap-3 hover:opacity-80 transition-opacity cursor-pointer"
                 >
                   <div className="text-right hidden sm:block">
-                    <p className="text-sm font-medium text-gray-800">Usuario</p>
-                    <p className="text-xs text-gray-500">usuario@ejemplo.com</p>
+                    <p className="text-sm font-medium text-gray-800">{user.name}</p>
+                    <p className="text-xs text-gray-500">{user.email}</p>
                   </div>
                   <div className="w-10 h-10 bg-sky-600 rounded-full flex items-center justify-center text-white font-bold">
-                    U
+                    {user.name.charAt(0).toUpperCase()}
                   </div>
                   <svg
                     className={`w-4 h-4 text-gray-600 transition-transform ${isMenuOpen ? "rotate-180" : ""
@@ -113,8 +122,8 @@ const DashboardLayout = () => {
                 {isMenuOpen && (
                   <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl border border-gray-200 py-2 z-50">
                     <div className="px-4 py-3 border-b border-gray-200 sm:hidden">
-                      <p className="text-sm font-semibold text-gray-800">Usuario</p>
-                      <p className="text-xs text-gray-500">usuario@ejemplo.com</p>
+                      <p className="text-sm font-semibold text-gray-800">{user.name}</p>
+                      <p className="text-xs text-gray-500">{user.email}</p>
                     </div>
                     <button
                       onClick={handleViewProfile}

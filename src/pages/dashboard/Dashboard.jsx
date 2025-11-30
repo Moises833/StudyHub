@@ -1,6 +1,45 @@
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { getCurrentUser } from "../../helpers/auth";
+import { getProjectsByUser, getAllTasksByUser } from "../../helpers/projects";
 
 const Dashboard = () => {
+  const [stats, setStats] = useState({
+    projects: 0,
+    tasks: 0,
+    pending: 0,
+    completed: 0
+  });
+  const [recentProjects, setRecentProjects] = useState([]);
+  const [currentUser, setCurrentUser] = useState(null);
+
+  useEffect(() => {
+    const user = getCurrentUser();
+    if (user) {
+      setCurrentUser(user);
+
+      // Cargar proyectos y filtrar solo los creados por el usuario
+      const allProjects = getProjectsByUser(user.id);
+      const myProjects = allProjects.filter(p => p.userId === user.id);
+
+      // Cargar tareas y filtrar solo las de proyectos creados por el usuario
+      const allTasks = getAllTasksByUser(user.id);
+      const myTasks = allTasks.filter(t => t.projectUserId === user.id);
+
+      // Calcular estadísticas
+      setStats({
+        projects: myProjects.length,
+        tasks: myTasks.length,
+        pending: myTasks.filter(t => !t.completada).length,
+        completed: myTasks.filter(t => t.completada).length
+      });
+
+      // Obtener proyectos recientes (últimos 3)
+      const sortedProjects = [...myProjects].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      setRecentProjects(sortedProjects.slice(0, 3));
+    }
+  }, []);
+
   return (
     <div className="p-6">
       <div className="mb-8">
@@ -8,7 +47,7 @@ const Dashboard = () => {
           Menú Principal
         </h1>
         <p className="text-gray-600 text-lg">
-          Bienvenido a tu panel de control de StudyHub
+          Bienvenido a tu panel de control de StudyHub, {currentUser?.name}
         </p>
       </div>
       {/* Estadísticas rápidas */}
@@ -18,7 +57,7 @@ const Dashboard = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-gray-600 text-sm font-medium">Proyectos</p>
-              <p className="text-3xl font-bold text-gray-800 mt-2">12</p>
+              <p className="text-3xl font-bold text-gray-800 mt-2">{stats.projects}</p>
             </div>
             <div className="bg-blue-100 p-3 rounded-lg">
               <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -28,11 +67,11 @@ const Dashboard = () => {
           </div>
         </Link>
         {/*RECUADRO DE TAREAS*/}
-        <Link to="/dashboard/proyectos" className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-green-500 cursor-pointer hover:shadow-xl transition-shadow">
+        <Link to="/dashboard/tareas" className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-green-500 cursor-pointer hover:shadow-xl transition-shadow">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-gray-600 text-sm font-medium">Tareas</p>
-              <p className="text-3xl font-bold text-gray-800 mt-2">8</p>
+              <p className="text-3xl font-bold text-gray-800 mt-2">{stats.tasks}</p>
             </div>
             <div className="bg-green-100 p-3 rounded-lg">
               <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -42,11 +81,11 @@ const Dashboard = () => {
           </div>
         </Link>
         {/*RECUADRO DE PENDIENTES*/}
-        <Link to="/dashboard/proyectos" className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-yellow-500 cursor-pointer hover:shadow-xl transition-shadow">
+        <Link to="/dashboard/tareas" className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-yellow-500 cursor-pointer hover:shadow-xl transition-shadow">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-gray-600 text-sm font-medium">Pendientes</p>
-              <p className="text-3xl font-bold text-gray-800 mt-2">5</p>
+              <p className="text-3xl font-bold text-gray-800 mt-2">{stats.pending}</p>
             </div>
             <div className="bg-yellow-100 p-3 rounded-lg">
               <svg className="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -56,11 +95,11 @@ const Dashboard = () => {
           </div>
         </Link>
         {/*RECUADRO DE COMPLETADOS*/}
-        <Link to="/dashboard/proyectos" className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-purple-500 cursor-pointer hover:shadow-xl transition-shadow">
+        <Link to="/dashboard/tareas" className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-purple-500 cursor-pointer hover:shadow-xl transition-shadow">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-gray-600 text-sm font-medium">Completados</p>
-              <p className="text-3xl font-bold text-gray-800 mt-2">24</p>
+              <p className="text-3xl font-bold text-gray-800 mt-2">{stats.completed}</p>
             </div>
             <div className="bg-purple-100 p-3 rounded-lg">
               <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -76,52 +115,60 @@ const Dashboard = () => {
         <div className="lg:col-span-2 bg-white rounded-xl shadow-lg p-6">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-gray-800">Proyectos Recientes</h2>
-            <button className="text-sky-600 hover:text-sky-700 font-medium text-sm">
+            <Link to="/dashboard/proyectos" className="text-sky-600 hover:text-sky-700 font-medium text-sm">
               Ver todos
-            </button>
+            </Link>
           </div>
           <div className="space-y-4">
-            {[1, 2, 3].map((item) => (
-              <div key={item} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-gray-800 mb-1">
-                      Proyecto Académico {item}
-                    </h3>
-                    <p className="text-sm text-gray-600 mb-2">
-                      Descripción del proyecto académico número {item}
-                    </p>
-                    <div className="flex items-center gap-4 text-xs text-gray-500">
-                      <span>📅 Hace {item} días</span>
-                      <span>👤 Usuario</span>
+            {recentProjects.length > 0 ? (
+              recentProjects.map((proyecto) => (
+                <Link to={`/dashboard/proyectos/${proyecto.id}`} key={proyecto.id} className="block border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-gray-800 mb-1">
+                        {proyecto.nombre}
+                      </h3>
+                      <p className="text-sm text-gray-600 mb-2">
+                        {proyecto.descripcion.length > 60 ? `${proyecto.descripcion.substring(0, 60)}...` : proyecto.descripcion}
+                      </p>
+
+                      <div className="mt-3">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs text-gray-500">Progreso</span>
+                          <span className="text-xs font-semibold text-gray-700">{proyecto.progreso}%</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-1.5">
+                          <div
+                            className="bg-sky-600 h-1.5 rounded-full"
+                            style={{ width: `${proyecto.progreso}%` }}
+                          ></div>
+                        </div>
+                        <div className="mt-2 text-xs text-gray-500">
+                          📅 Entrega: {proyecto.fechaEntrega ? new Date(proyecto.fechaEntrega).toLocaleDateString() : 'Sin fecha'}
+                        </div>
+                      </div>
                     </div>
+
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${proyecto.estado === 'activo' ? 'bg-blue-100 text-blue-700' :
+                        proyecto.estado === 'completado' ? 'bg-green-100 text-green-700' :
+                          'bg-yellow-100 text-yellow-700'
+                      }`}>
+                      {proyecto.estado.toUpperCase()}
+                    </span>
                   </div>
-                  <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
-                    Activo
-                  </span>
-                </div>
-              </div>
-            ))}
+                </Link>
+              ))
+            ) : (
+              <p className="text-gray-500 text-center py-4">No hay proyectos recientes</p>
+            )}
           </div>
         </div>
         {/* Actividad reciente */}
         <div className="bg-white rounded-xl shadow-lg p-6">
           <h2 className="text-2xl font-bold text-gray-800 mb-6">Actividad Reciente</h2>
           <div className="space-y-4">
-            {[
-              { action: "Nuevo proyecto creado", time: "Hace 2 horas" },
-              { action: "Tarea completada", time: "Hace 5 horas" },
-              { action: "Archivo subido", time: "Ayer" },
-              { action: "Comentario agregado", time: "Hace 2 días" },
-            ].map((activity, index) => (
-              <div key={index} className="flex items-start gap-3 pb-4 border-b border-gray-100 last:border-0">
-                <div className="w-2 h-2 bg-sky-500 rounded-full mt-2"></div>
-                <div className="flex-1">
-                  <p className="text-sm text-gray-800 font-medium">{activity.action}</p>
-                  <p className="text-xs text-gray-500 mt-1">{activity.time}</p>
-                </div>
-              </div>
-            ))}
+            {/* Placeholder para actividad futura */}
+            <p className="text-gray-500 text-sm italic">Próximamente: Historial de actividad</p>
           </div>
         </div>
       </div>
@@ -130,4 +177,3 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
-

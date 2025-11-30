@@ -10,6 +10,7 @@ import Proyectos from "./pages/dashboard/Proyectos";
 import Calendario from "./pages/dashboard/Calendario";
 import Perfil from "./pages/dashboard/Perfil";
 
+import ProyectoDetalle from "./pages/dashboard/ProyectoDetalle";
 import Tareas from "./pages/dashboard/Tareas";
 
 function App() {
@@ -29,6 +30,7 @@ function App() {
           <Route path="/dashboard" element={<DashboardLayout />}>
             <Route index element={<Dashboard />} />
             <Route path="proyectos" element={<Proyectos />} />
+            <Route path="proyectos/:id" element={<ProyectoDetalle />} />
             <Route path="tareas" element={<Tareas />} />
             <Route path="calendario" element={<Calendario />} />
             <Route path="perfil" element={<Perfil />} />

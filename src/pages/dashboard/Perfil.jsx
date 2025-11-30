@@ -1,16 +1,30 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { getCurrentUser } from "../../helpers/auth";
 
 const Perfil = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [userData, setUserData] = useState({
-    nombre: "Usuario",
-    email: "usuario@ejemplo.com",
-    telefono: "+34 123 456 789",
-    universidad: "Universidad Ejemplo",
-    carrera: "Ingeniería Informática",
-    semestre: "6to Semestre",
-    bio: "Estudiante apasionado por la tecnología y el aprendizaje continuo.",
+    nombre: "",
+    email: "",
+    telefono: "",
+    universidad: "",
+    carrera: "",
+    semestre: "",
+    bio: "",
   });
+
+  useEffect(() => {
+    const user = getCurrentUser();
+    if (user) {
+      setUserData(prev => ({
+        ...prev,
+        nombre: user.name || "",
+        email: user.email || "",
+        // Mantener los otros campos vacíos o con valores por defecto si no existen en el usuario
+        // En una implementación real, estos datos también se guardarían en el usuario
+      }));
+    }
+  }, []);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -206,7 +220,7 @@ const Perfil = () => {
           {/* Avatar */}
           <div className="bg-white rounded-xl shadow-lg p-6 text-center">
             <div className="w-32 h-32 bg-sky-600 rounded-full flex items-center justify-center text-white text-4xl font-bold mx-auto mb-4">
-              U
+              {userData.nombre ? userData.nombre.charAt(0).toUpperCase() : "U"}
             </div>
             <h3 className="text-xl font-bold text-gray-800 mb-1">
               {userData.nombre}
