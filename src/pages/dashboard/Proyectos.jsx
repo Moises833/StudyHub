@@ -19,18 +19,36 @@ const Proyectos = () => {
     estado: "activo"
   });
 
+  const loadProjects = (userId) => {
+    const data = getProjectsByUser(userId);
+    setProyectos(data);
+  };
+
   useEffect(() => {
     const user = getCurrentUser();
     if (user) {
       setCurrentUser(user);
       loadProjects(user.id);
     }
-  }, []);
 
-  const loadProjects = (userId) => {
-    const data = getProjectsByUser(userId);
-    setProyectos(data);
-  };
+    const onDataChanged = () => {
+      const u = getCurrentUser();
+      if (u) loadProjects(u.id);
+    };
+    try {
+      if (typeof window !== 'undefined') {
+        window.addEventListener('studyhub:data-changed', onDataChanged);
+      }
+    } catch (error) { void error; }
+
+    return () => {
+      try {
+        if (typeof window !== 'undefined') {
+          window.removeEventListener('studyhub:data-changed', onDataChanged);
+        }
+      } catch (error) { void error; }
+    };
+  }, []);
 
   const handleCreateProject = (e) => {
     e.preventDefault();
@@ -83,7 +101,13 @@ const Proyectos = () => {
 
   const formatDate = (dateString) => {
     if (!dateString) return "Sin fecha";
-    const date = new Date(dateString);
+    let date;
+    if (typeof dateString === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+      const [y, m, d] = dateString.split('-').map(Number);
+      date = new Date(y, m - 1, d);
+    } else {
+      date = new Date(dateString);
+    }
     return date.toLocaleDateString("es-ES", {
       year: "numeric",
       month: "short",

@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
+import { useParams, Link } from "react-router-dom";
 import {
     getProjectById,
     updateProject,
@@ -7,13 +7,13 @@ import {
     toggleTask,
     deleteTask,
     addCollaborator,
-    removeCollaborator
+    removeCollaborator,
+    addProjectFile
 } from "../../helpers/projects";
 import { getAllUsers, getCurrentUser } from "../../helpers/auth";
 
 const ProyectoDetalle = () => {
     const { id } = useParams();
-    const navigate = useNavigate();
     const [proyecto, setProyecto] = useState(null);
     const [loading, setLoading] = useState(true);
     const [currentUser, setCurrentUser] = useState(null);
@@ -22,6 +22,10 @@ const ProyectoDetalle = () => {
     const [newTask, setNewTask] = useState("");
     const [collaboratorEmail, setCollaboratorEmail] = useState("");
     const [msg, setMsg] = useState({ type: "", content: "" });
+    const [selectedFile, setSelectedFile] = useState(null);
+    const [uploadProgress, setUploadProgress] = useState(0);
+    const [uploading, setUploading] = useState(false);
+    const fileInputRef = useRef(null);
 
     useEffect(() => {
         const user = getCurrentUser();
@@ -38,7 +42,13 @@ const ProyectoDetalle = () => {
     const handleStatusChange = (e) => {
         const newStatus = e.target.value;
         const updatedProject = updateProject(proyecto.id, { estado: newStatus });
-        setProyecto(updatedProject);
+        if (updatedProject) {
+            setProyecto(updatedProject);
+        } else {
+            // If updateProject failed to find the project, keep local state but show an error message
+            setMsg({ type: 'error', content: 'No se pudo actualizar el proyecto (problema de persistencia).' });
+            setTimeout(() => setMsg({ type: '', content: '' }), 3500);
+        }
     };
 
     const handleAddTask = (e) => {
@@ -100,6 +110,92 @@ const ProyectoDetalle = () => {
         }
     };
 
+    const handleFileChange = (e) => {
+        const f = e.target.files && e.target.files[0];
+        setSelectedFile(f || null);
+        try { if (typeof console !== 'undefined' && console.debug) console.debug('[studyhub] handleFileChange selected:', f); } catch(e){ void e; }
+        setUploadProgress(0);
+    };
+
+    const handleFileButtonClick = () => {
+        if (uploading) return;
+        if (!selectedFile) {
+            if (fileInputRef && fileInputRef.current) {
+                try {
+                    fileInputRef.current.click();
+                } catch (err) {
+                    try { console.error('[studyhub] could not open file selector', err); } catch(e){ void e; }
+                }
+            } else {
+                try { console.warn('[studyhub] fileInputRef not ready'); } catch(e){ void e; }
+            }
+            return;
+        }
+        startUpload();
+    };
+
+    const startUpload = () => {
+        if (!selectedFile) return;
+        setUploading(true);
+        setUploadProgress(0);
+
+        // Read file data if small, otherwise only persist metadata
+        const reader = new FileReader();
+        let readResult = null;
+
+        reader.onload = () => {
+            readResult = reader.result;
+        };
+
+        reader.onerror = () => {
+            readResult = null;
+        };
+
+        // Start reading (this is quick for small files)
+        try {
+            reader.readAsDataURL(selectedFile);
+        } catch (err) { void err; }
+
+        // Simulate upload progress until read completes
+        const interval = setInterval(() => {
+            setUploadProgress(prev => {
+                const next = Math.min(95, prev + Math.floor(Math.random() * 10) + 5);
+                return next;
+            });
+        }, 200);
+
+        // Poll for reader completion
+        const completeCheck = setInterval(() => {
+            // finish when reader finished (result set)
+            if (readResult !== null) {
+                clearInterval(interval);
+                clearInterval(completeCheck);
+                setUploadProgress(100);
+                // prepare metadata
+                const meta = {
+                    id: Date.now(),
+                    name: selectedFile.name,
+                    size: selectedFile.size,
+                    type: selectedFile.type,
+                    createdAt: new Date().toISOString(),
+                };
+                // include data only if small (<1MB)
+                if (selectedFile.size <= 1024 * 1024 && readResult) {
+                    meta.dataUrl = readResult;
+                }
+
+                const updatedProject = addProjectFile(proyecto.id, meta);
+                if (updatedProject) {
+                    setProyecto(updatedProject);
+                }
+
+                setUploading(false);
+                setSelectedFile(null);
+                setUploadProgress(0);
+            }
+        }, 300);
+    };
+
     if (loading) return <div className="p-6 text-center">Cargando...</div>;
     if (!proyecto) return <div className="p-6 text-center">Proyecto no encontrado</div>;
 
@@ -119,6 +215,55 @@ const ProyectoDetalle = () => {
                     <div>
                         <h1 className="text-4xl font-bold text-gray-800 mb-2">{proyecto.nombre}</h1>
                         <p className="text-gray-600 text-lg">{proyecto.descripcion}</p>
+                    </div>
+                    <div className="bg-white rounded-xl shadow-lg p-6">
+                        <h3 className="font-bold text-gray-800 mb-4">Archivos del Proyecto</h3>
+
+                        <div className="mb-3">
+                            <input ref={fileInputRef} type="file" onChange={handleFileChange} className="w-full" />
+                        </div>
+
+                        <div className="flex gap-2 mb-3">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    if (uploading) return;
+                                    if (!selectedFile) {
+                                        try { fileInputRef.current && fileInputRef.current.click(); } catch(e) { void e; }
+                                        return;
+                                    }
+                                    startUpload();
+                                }}
+                                className="flex-1 bg-sky-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-sky-700 transition-colors disabled:opacity-50"
+                            >
+                                {uploading ? 'Subiendo...' : (selectedFile ? 'Subir archivo' : 'Seleccionar archivo')}
+                            </button>
+                        </div>
+
+                        {uploading && (
+                            <div className="w-full bg-gray-200 rounded-full h-3 mb-3">
+                                <div className="bg-sky-600 h-3 rounded-full transition-all" style={{ width: `${uploadProgress}%` }} />
+                            </div>
+                        )}
+
+                        <div className="text-xs text-gray-600">
+                            {proyecto.files && proyecto.files.length > 0 ? (
+                                <ul className="space-y-2">
+                                    {proyecto.files.map(f => (
+                                        <li key={f.id} className="flex items-center justify-between">
+                                            <div className="truncate pr-2">{f.name} <span className="text-gray-400">({Math.round((f.size||0)/1024)} KB)</span></div>
+                                            {f.dataUrl ? (
+                                                <a href={f.dataUrl} download={f.name} className="text-sky-600 hover:underline text-sm">Descargar</a>
+                                            ) : (
+                                                <span className="text-xs text-gray-400">(metadatos)</span>
+                                            )}
+                                        </li>
+                                    ))}
+                                </ul>
+                            ) : (
+                                <p className="text-xs text-gray-500">No hay archivos subidos</p>
+                            )}
+                        </div>
                     </div>
 
                     <div className="flex items-center gap-2 bg-white p-2 rounded-lg shadow-sm">

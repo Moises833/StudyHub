@@ -70,3 +70,46 @@ export const getCurrentUser = () => {
     const user = localStorage.getItem(CURRENT_USER_KEY);
     return user ? JSON.parse(user) : null;
 };
+
+// Update user in users list and also update current session if it matches
+const _updateUser = (userId, updates) => {
+    const users = getAllUsers();
+    const index = users.findIndex(u => u.id === userId);
+    if (index === -1) return null;
+
+    users[index] = { ...users[index], ...updates };
+    localStorage.setItem(USERS_KEY, JSON.stringify(users));
+
+    const current = getCurrentUser();
+    if (current && current.id === userId) {
+        const updatedSession = { ...current, ...updates };
+        localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(updatedSession));
+    }
+
+    return users[index];
+};
+
+// Convenience: set avatar (base64 or URL) on user profile
+export const setUserAvatar = (userId, avatarData) => {
+    const updated = _updateUser(userId, { avatar: avatarData });
+    try {
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('studyhub:data-changed'));
+        }
+    } catch (error) { void error; }
+    return updated;
+};
+
+// Dispatch data-changed after updateUser as well
+const _updateUserAndNotify = (userId, updates) => {
+    const updated = _updateUser(userId, updates);
+    try {
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('studyhub:data-changed'));
+        }
+    } catch (error) { void error; }
+    return updated;
+};
+
+// Replace exported updateUser with wrapper that notifies listeners
+export { _updateUserAndNotify as updateUser };

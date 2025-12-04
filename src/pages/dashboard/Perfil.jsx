@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
-import { getCurrentUser } from "../../helpers/auth";
+import { useState, useEffect, useRef } from "react";
+import { getCurrentUser, updateUser, setUserAvatar, getAllUsers } from "../../helpers/auth";
+import { getProjectsByUser, getAllTasksByUser, getEvents } from "../../helpers/projects";
 
 const Perfil = () => {
   const [isEditing, setIsEditing] = useState(false);
@@ -12,18 +13,51 @@ const Perfil = () => {
     semestre: "",
     bio: "",
   });
+  const [stats, setStats] = useState({ projects: 0, tasksCompleted: 0, events: 0 });
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
-    const user = getCurrentUser();
-    if (user) {
-      setUserData(prev => ({
-        ...prev,
-        nombre: user.name || "",
-        email: user.email || "",
-        // Mantener los otros campos vacíos o con valores por defecto si no existen en el usuario
-        // En una implementación real, estos datos también se guardarían en el usuario
-      }));
-    }
+    const loadProfile = () => {
+      const user = getCurrentUser();
+      if (user) {
+        const all = getAllUsers();
+        const full = all.find(u => u.id === user.id) || user;
+        setUserData(prev => ({
+          ...prev,
+          nombre: full.name || user.name || "",
+          email: full.email || user.email || "",
+          avatar: full.avatar || user.avatar || null,
+          telefono: full.telefono || "",
+          universidad: full.universidad || "",
+          carrera: full.carrera || "",
+          semestre: full.semestre || "",
+          bio: full.bio || "",
+        }));
+
+        const projects = getProjectsByUser(user.id) || [];
+        const allTasks = getAllTasksByUser(user.id) || [];
+        const completed = allTasks.filter(t => t.completada).length;
+        const events = getEvents(user.id) || [];
+        setStats({ projects: projects.length, tasksCompleted: completed, events: events.length });
+      }
+    };
+
+    loadProfile();
+
+    const onDataChanged = () => loadProfile();
+    try {
+      if (typeof window !== 'undefined') {
+        window.addEventListener('studyhub:data-changed', onDataChanged);
+      }
+    } catch (error) { void error; }
+
+    return () => {
+      try {
+        if (typeof window !== 'undefined') {
+          window.removeEventListener('studyhub:data-changed', onDataChanged);
+        }
+      } catch (error) { void error; }
+    };
   }, []);
 
   const handleInputChange = (e) => {
@@ -35,10 +69,26 @@ const Perfil = () => {
   };
 
   const handleSave = () => {
-    // Aquí puedes agregar la lógica para guardar los datos
-    console.log("Guardando datos:", userData);
+    // Guardar los datos en el usuario (localStorage)
+    const current = getCurrentUser();
+    if (current) {
+      const updated = updateUser(current.id, {
+        name: userData.nombre,
+        email: userData.email,
+        telefono: userData.telefono,
+        universidad: userData.universidad,
+        carrera: userData.carrera,
+        semestre: userData.semestre,
+        bio: userData.bio,
+      });
+      // Actualizar estado local con lo que se guardó
+      if (updated) {
+        setUserData(prev => ({ ...prev, nombre: updated.name || prev.nombre, email: updated.email || prev.email, avatar: updated.avatar || prev.avatar, telefono: updated.telefono || prev.telefono, universidad: updated.universidad || prev.universidad, carrera: updated.carrera || prev.carrera, semestre: updated.semestre || prev.semestre, bio: updated.bio || prev.bio }));
+      }
+    }
     setIsEditing(false);
   };
+
 
   return (
     <div className="p-6">
@@ -219,14 +269,34 @@ const Perfil = () => {
         <div className="space-y-6">
           {/* Avatar */}
           <div className="bg-white rounded-xl shadow-lg p-6 text-center">
-            <div className="w-32 h-32 bg-sky-600 rounded-full flex items-center justify-center text-white text-4xl font-bold mx-auto mb-4">
-              {userData.nombre ? userData.nombre.charAt(0).toUpperCase() : "U"}
+            <div className="w-32 h-32 bg-sky-600 rounded-full overflow-hidden mx-auto mb-4">
+              {userData.avatar ? (
+                <img src={userData.avatar} alt="Avatar" className="w-32 h-32 object-cover rounded-full" />
+              ) : (
+                <div className="w-32 h-32 bg-sky-600 rounded-full flex items-center justify-center text-white text-4xl font-bold">
+                  {userData.nombre ? userData.nombre.charAt(0).toUpperCase() : "U"}
+                </div>
+              )}
             </div>
+            <input type="file" accept="image/*" ref={fileInputRef} className="hidden" onChange={(e) => {
+              const file = e.target.files && e.target.files[0];
+              if (!file) return;
+              const reader = new FileReader();
+              reader.onload = () => {
+                const base64 = reader.result;
+                const current = getCurrentUser();
+                if (current) {
+                  setUserAvatar(current.id, base64);
+                  setUserData(prev => ({ ...prev, avatar: base64 }));
+                }
+              };
+              reader.readAsDataURL(file);
+            }} />
             <h3 className="text-xl font-bold text-gray-800 mb-1">
               {userData.nombre}
             </h3>
             <p className="text-sm text-gray-600 mb-4">{userData.email}</p>
-            <button className="w-full px-4 py-2 border border-gray-300 hover:bg-gray-50 text-gray-700 rounded-lg font-medium transition-colors">
+            <button onClick={() => fileInputRef.current && fileInputRef.current.click()} className="w-full px-4 py-2 border border-gray-300 hover:bg-gray-50 text-gray-700 rounded-lg font-medium transition-colors">
               Cambiar Foto
             </button>
           </div>
@@ -237,15 +307,15 @@ const Perfil = () => {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-gray-600">Proyectos</span>
-                <span className="font-bold text-gray-800">12</span>
+                <span className="font-bold text-gray-800">{stats.projects}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-gray-600">Tareas Completadas</span>
-                <span className="font-bold text-gray-800">24</span>
+                <span className="font-bold text-gray-800">{stats.tasksCompleted}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-gray-600">Eventos</span>
-                <span className="font-bold text-gray-800">8</span>
+                <span className="font-bold text-gray-800">{stats.events}</span>
               </div>
             </div>
           </div>

@@ -1,8 +1,6 @@
-import { useState } from "react";
-
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { getAllTasksByUser, toggleTask, deleteTask } from "../../helpers/projects";
+import { getAllTasksByUser, toggleTask, deleteTask, getProjectsByUser, updateProject } from "../../helpers/projects";
 import { getCurrentUser } from "../../helpers/auth";
 
 const Tareas = () => {
@@ -10,6 +8,7 @@ const Tareas = () => {
     const [filterStatus, setFilterStatus] = useState("todos");
     const [tareas, setTareas] = useState([]);
     const [currentUser, setCurrentUser] = useState(null);
+        const [proyectos, setProyectos] = useState([]);
 
     useEffect(() => {
         const user = getCurrentUser();
@@ -17,13 +16,40 @@ const Tareas = () => {
             setCurrentUser(user);
             loadTasks(user.id);
         }
+
+        const onDataChanged = () => {
+            const u = getCurrentUser();
+            if (u) {
+                setCurrentUser(u);
+                loadTasks(u.id);
+            } else {
+                setCurrentUser(null);
+                setTareas([]);
+            }
+        };
+        try {
+            if (typeof window !== 'undefined') {
+                window.addEventListener('studyhub:data-changed', onDataChanged);
+            }
+        } catch (error) { void error; }
+
+        return () => {
+            try {
+                if (typeof window !== 'undefined') {
+                    window.removeEventListener('studyhub:data-changed', onDataChanged);
+                }
+            } catch (error) { void error; }
+        };
     }, []);
 
     const loadTasks = (userId) => {
         const data = getAllTasksByUser(userId);
-        // Filtrar solo las tareas de proyectos creados por el usuario
-        const myTasks = data.filter(t => t.projectUserId === userId);
-        setTareas(myTasks);
+        // Mostrar todas las tareas de los proyectos a los que el usuario tiene acceso
+        setTareas(data);
+            // Cargar proyectos accesibles que no tienen tareas (para permitir marcarlos como completados desde esta vista)
+            const p = getProjectsByUser(userId) || [];
+            const proyectosSinTareas = p.filter(proj => !proj.tareas || proj.tareas.length === 0);
+            setProyectos(proyectosSinTareas);
     };
 
     const handleToggleTask = (projectId, taskId) => {
@@ -37,6 +63,39 @@ const Tareas = () => {
             if (currentUser) loadTasks(currentUser.id);
         }
     };
+
+        const handleToggleProject = (projectId) => {
+            // marcar proyecto como completado/activo
+            const all = getProjectsByUser(currentUser?.id);
+            const proyecto = all.find(p => p.id === projectId);
+            if (!proyecto) return;
+
+            const isCompleted = proyecto.progreso === 100 || proyecto.estado === 'completado';
+            if (isCompleted) {
+                // if the project had no tasks originally and we created a synthetic one, remove it
+                if (!proyecto.tareas || proyecto.tareas.length === 1 && proyecto.tareas[0] && String(proyecto.tareas[0].nombre || '').startsWith('(Proyecto)')) {
+                    updateProject(projectId, { progreso: 0, estado: 'activo', tareas: [], tareasTotales: 0, tareasCompletadas: 0 });
+                } else {
+                    updateProject(projectId, { progreso: 0, estado: 'activo' });
+                }
+            } else {
+                // If project has no tasks, create a synthetic completed task so counts reflect completion
+                if (!proyecto.tareas || proyecto.tareas.length === 0) {
+                    const synthetic = {
+                        id: Date.now(),
+                        nombre: `(Proyecto) ${proyecto.nombre} - completado`,
+                        completada: true,
+                        createdAt: new Date().toISOString()
+                    };
+                    updateProject(projectId, { tareas: [synthetic], tareasTotales: 1, tareasCompletadas: 1, progreso: 100, estado: 'completado' });
+                } else {
+                    // For projects with existing tasks, mark progress to 100 (but do not alter tasks)
+                    updateProject(projectId, { progreso: 100, estado: 'completado', tareasCompletadas: proyecto.tareasTotales || proyecto.tareas.filter(t => t.completada).length });
+                }
+            }
+
+            if (currentUser) loadTasks(currentUser.id);
+        };
 
     const getStatusColor = (completada) => {
         return completada ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700";
@@ -60,7 +119,13 @@ const Tareas = () => {
 
     const formatDate = (dateString) => {
         if (!dateString) return "-";
-        const date = new Date(dateString);
+        let date;
+        if (typeof dateString === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+            const [y, m, d] = dateString.split('-').map(Number);
+            date = new Date(y, m - 1, d);
+        } else {
+            date = new Date(dateString);
+        }
         return date.toLocaleDateString("es-ES", {
             year: "numeric",
             month: "short",
@@ -170,6 +235,47 @@ const Tareas = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-200">
+                                {/* Proyectos sin tareas mostrados como entradas para marcar como completado */}
+                                {proyectos.map((proyecto) => (
+                                    <tr key={`proj-${proyecto.id}`} className="hover:bg-gray-50 transition-colors">
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-3">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={proyecto.progreso === 100 || proyecto.estado === 'completado'}
+                                                    onChange={() => handleToggleProject(proyecto.id)}
+                                                    className="w-4 h-4 text-sky-600 rounded focus:ring-sky-500 cursor-pointer"
+                                                />
+                                                <p className={`font-medium ${proyecto.progreso === 100 ? 'line-through text-gray-400' : 'text-gray-800'}`}>
+                                                    {proyecto.nombre}
+                                                </p>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 text-sm text-gray-600">
+                                            <span className="text-sm text-gray-600">Proyecto</span>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span
+                                                className={`px-2 py-1 rounded-full text-xs font-medium ${proyecto.progreso === 100 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}
+                                            >
+                                                {proyecto.progreso === 100 ? 'Completado' : 'Pendiente'}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 text-sm text-gray-600">
+                                            {new Date(proyecto.createdAt).toLocaleDateString()}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => { if (window.confirm('¿Eliminar proyecto?')) { /* placeholder */ } }}
+                                                    className="text-red-600 hover:text-red-800 font-medium text-sm"
+                                                >
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+
                                 {filteredTareas.map((tarea) => (
                                     <tr key={tarea.id} className="hover:bg-gray-50 transition-colors">
                                         <td className="px-6 py-4">

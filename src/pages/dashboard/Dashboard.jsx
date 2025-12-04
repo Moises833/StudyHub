@@ -14,30 +14,62 @@ const Dashboard = () => {
   const [currentUser, setCurrentUser] = useState(null);
 
   useEffect(() => {
-    const user = getCurrentUser();
-    if (user) {
-      setCurrentUser(user);
+    const loadData = () => {
+      const user = getCurrentUser();
+      if (user) {
+        setCurrentUser(user);
 
-      // Cargar proyectos y filtrar solo los creados por el usuario
-      const allProjects = getProjectsByUser(user.id);
-      const myProjects = allProjects.filter(p => p.userId === user.id);
+        const allProjects = getProjectsByUser(user.id);
+        const myProjects = allProjects.filter(p => String(p.userId) === String(user.id));
 
-      // Cargar tareas y filtrar solo las de proyectos creados por el usuario
-      const allTasks = getAllTasksByUser(user.id);
-      const myTasks = allTasks.filter(t => t.projectUserId === user.id);
+        const allTasks = getAllTasksByUser(user.id);
+        const myTasks = allTasks.filter(t => String(t.projectUserId) === String(user.id));
 
-      // Calcular estadísticas
-      setStats({
-        projects: myProjects.length,
-        tasks: myTasks.length,
-        pending: myTasks.filter(t => !t.completada).length,
-        completed: myTasks.filter(t => t.completada).length
-      });
+        const completedTasksCount = myTasks.filter(t => t.completada).length;
+        const completedProjectsCount = myProjects.filter(p => (p.progreso === 100 || p.estado === 'completado')).length;
 
-      // Obtener proyectos recientes (últimos 3)
-      const sortedProjects = [...myProjects].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-      setRecentProjects(sortedProjects.slice(0, 3));
-    }
+        // Pending logic: count pending tasks plus projects that are not completed and have no completed-all state
+        const pendingTasksCount = myTasks.filter(t => !t.completada).length;
+        const pendingProjectsCount = myProjects.filter(p => {
+          // project is pending if not completed and either has no tasks or still has incomplete tasks
+          if (p.progreso === 100 || p.estado === 'completado') return false;
+          if (!p.tareas || p.tareas.length === 0) return true;
+          // if tareasTotales / tareasCompletadas fields exist, use them; otherwise infer from tareas
+          const total = p.tareasTotales || p.tareas.length || 0;
+          const completed = p.tareasCompletadas || p.tareas.filter(t => t.completada).length || 0;
+          return completed < total;
+        }).length;
+
+        setStats({
+          projects: myProjects.length,
+          tasks: myTasks.length,
+          pending: pendingTasksCount + pendingProjectsCount,
+          completed: completedTasksCount + completedProjectsCount
+        });
+
+        const sortedProjects = [...myProjects].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        setRecentProjects(sortedProjects.slice(0, 3));
+      }
+    };
+
+    loadData();
+
+    const onDataChanged = () => {
+      loadData();
+    };
+    try {
+      if (typeof window !== 'undefined') {
+        window.addEventListener('studyhub:data-changed', onDataChanged);
+      }
+    } catch (error) { void error; }
+
+    return () => {
+      try {
+        if (typeof window !== 'undefined') {
+          window.removeEventListener('studyhub:data-changed', onDataChanged);
+        }
+      } catch (error) { void error; }
+    };
   }, []);
 
   return (

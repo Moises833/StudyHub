@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { getEvents, addEvent } from "../../helpers/projects";
+import { getCurrentUser } from "../../helpers/auth";
 
 const Calendario = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -6,37 +8,9 @@ const Calendario = () => {
   const [showEventModal, setShowEventModal] = useState(false);
   const [newEvent, setNewEvent] = useState({ title: "", date: "", time: "", type: "tarea" });
 
-  // Eventos de ejemplo
-  const [eventos, setEventos] = useState([
-    {
-      id: 1,
-      title: "Entrega Proyecto Académico",
-      date: new Date(2024, 2, 15),
-      time: "10:00",
-      type: "proyecto",
-    },
-    {
-      id: 2,
-      title: "Reunión de equipo",
-      date: new Date(2024, 2, 18),
-      time: "14:00",
-      type: "reunion",
-    },
-    {
-      id: 3,
-      title: "Examen Final",
-      date: new Date(2024, 2, 22),
-      time: "09:00",
-      type: "examen",
-    },
-    {
-      id: 4,
-      title: "Presentación",
-      date: new Date(2024, 2, 25),
-      time: "16:00",
-      type: "presentacion",
-    },
-  ]);
+  // Eventos cargados desde localStorage (studyhub_events)
+  const [eventos, setEventos] = useState([]);
+  const [currentUser, setCurrentUser] = useState(null);
 
   const meses = [
     "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
@@ -87,7 +61,14 @@ const Calendario = () => {
 
   const getEventsForDate = (date) => {
     return eventos.filter((evento) => {
-      const eventDate = new Date(evento.date);
+      // Parse date strings like 'YYYY-MM-DD' as local dates to avoid timezone shifts
+      let eventDate;
+      if (typeof evento.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(evento.date)) {
+        const [y, m, d] = evento.date.split('-').map(Number);
+        eventDate = new Date(y, m - 1, d);
+      } else {
+        eventDate = new Date(evento.date);
+      }
       return (
         eventDate.getDate() === date.getDate() &&
         eventDate.getMonth() === date.getMonth() &&
@@ -143,19 +124,56 @@ const Calendario = () => {
 
   const handleAddEvent = () => {
     if (newEvent.title && newEvent.date) {
-      const eventDate = new Date(newEvent.date);
-      const newEventObj = {
-        id: eventos.length + 1,
-        title: newEvent.title,
-        date: eventDate,
-        time: newEvent.time || "00:00",
-        type: newEvent.type,
-      };
-      setEventos([...eventos, newEventObj]);
+        // Persistir evento en localStorage (asociado al usuario actual)
+        addEvent({
+          title: newEvent.title,
+          date: newEvent.date,
+          time: newEvent.time || "00:00",
+          type: newEvent.type,
+          userId: currentUser?.id || null,
+        });
+        // Recargar eventos desde storage (filtrados por usuario)
+        setEventos(getEvents(currentUser?.id).map(e => ({ ...e })));
       setNewEvent({ title: "", date: "", time: "", type: "tarea" });
       setShowEventModal(false);
     }
   };
+
+  useEffect(() => {
+    // Cargar usuario actual y eventos desde localStorage al montar
+    const user = getCurrentUser();
+    setCurrentUser(user);
+    if (user) {
+      const loaded = getEvents(user.id);
+      setEventos(loaded.map(e => ({ ...e })));
+    } else {
+      setEventos([]);
+    }
+
+    const onDataChanged = () => {
+      const u = getCurrentUser();
+      setCurrentUser(u);
+      if (u) {
+        const loaded = getEvents(u.id);
+        setEventos(loaded.map(e => ({ ...e })));
+      } else {
+        setEventos([]);
+      }
+    };
+    try {
+      if (typeof window !== 'undefined') {
+        window.addEventListener('studyhub:data-changed', onDataChanged);
+      }
+    } catch (error) { void error; }
+
+    return () => {
+      try {
+        if (typeof window !== 'undefined') {
+          window.removeEventListener('studyhub:data-changed', onDataChanged);
+        }
+      } catch (error) { void error; }
+    };
+  }, []);
 
   const days = getDaysInMonth(currentDate);
   const selectedDateEvents = selectedDate ? getEventsForDate(selectedDate) : [];

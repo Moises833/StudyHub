@@ -1,8 +1,7 @@
 import { useState } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 const ConfirmAccount = () => {
-  const { id } = useParams();
   const navigate = useNavigate();
   const [token, setToken] = useState("");
   const [error, setError] = useState("");
