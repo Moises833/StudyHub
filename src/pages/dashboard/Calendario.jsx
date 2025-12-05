@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { getEvents, addEvent } from "../../helpers/projects";
 import { getCurrentUser } from "../../helpers/auth";
+import { speak } from "../../helpers/speech";
 
 const Calendario = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -28,7 +29,7 @@ const Calendario = () => {
     const startingDayOfWeek = firstDay.getDay();
 
     const days = [];
-    
+
     // Días del mes anterior
     const prevMonth = new Date(year, month - 1, 0);
     const daysInPrevMonth = prevMonth.getDate();
@@ -124,18 +125,19 @@ const Calendario = () => {
 
   const handleAddEvent = () => {
     if (newEvent.title && newEvent.date) {
-        // Persistir evento en localStorage (asociado al usuario actual)
-        addEvent({
-          title: newEvent.title,
-          date: newEvent.date,
-          time: newEvent.time || "00:00",
-          type: newEvent.type,
-          userId: currentUser?.id || null,
-        });
-        // Recargar eventos desde storage (filtrados por usuario)
-        setEventos(getEvents(currentUser?.id).map(e => ({ ...e })));
+      // Persistir evento en localStorage (asociado al usuario actual)
+      addEvent({
+        title: newEvent.title,
+        date: newEvent.date,
+        time: newEvent.time || "00:00",
+        type: newEvent.type,
+        userId: currentUser?.id || null,
+      });
+      // Recargar eventos desde storage (filtrados por usuario)
+      setEventos(getEvents(currentUser?.id).map(e => ({ ...e })));
       setNewEvent({ title: "", date: "", time: "", type: "tarea" });
       setShowEventModal(false);
+      speak(`Evento ${newEvent.title} agregado al calendario`);
     }
   };
 
@@ -300,26 +302,22 @@ const Calendario = () => {
                 <div
                   key={index}
                   onClick={() => handleDateClick(day.date)}
-                  className={`min-h-[100px] p-2 border rounded-lg cursor-pointer transition-all ${
-                    !day.isCurrentMonth
-                      ? "bg-gray-50 border-gray-200 opacity-50"
-                      : "bg-white border-gray-200 hover:border-sky-300 hover:bg-sky-50"
-                  } ${
-                    isToday(day.date)
+                  className={`min-h-[100px] p-2 border rounded-lg cursor-pointer transition-all ${!day.isCurrentMonth
+                    ? "bg-gray-50 border-gray-200 opacity-50"
+                    : "bg-white border-gray-200 hover:border-sky-300 hover:bg-sky-50"
+                    } ${isToday(day.date)
                       ? "border-sky-500 border-2 bg-sky-50"
                       : ""
-                  } ${
-                    isSelected ? "border-sky-600 border-2 bg-sky-100" : ""
-                  }`}
+                    } ${isSelected ? "border-sky-600 border-2 bg-sky-100" : ""
+                    }`}
                 >
                   <div
-                    className={`text-sm font-medium mb-1 ${
-                      isToday(day.date)
-                        ? "text-sky-600 font-bold"
-                        : day.isCurrentMonth
+                    className={`text-sm font-medium mb-1 ${isToday(day.date)
+                      ? "text-sky-600 font-bold"
+                      : day.isCurrentMonth
                         ? "text-gray-800"
                         : "text-gray-400"
-                    }`}
+                      }`}
                   >
                     {day.date.getDate()}
                   </div>
@@ -352,10 +350,10 @@ const Calendario = () => {
           <h3 className="text-xl font-bold text-gray-800 mb-4">
             {selectedDate
               ? `Eventos - ${selectedDate.toLocaleDateString("es-ES", {
-                  day: "numeric",
-                  month: "long",
-                  year: "numeric",
-                })}`
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+              })}`
               : "Selecciona un día"}
           </h3>
 
@@ -450,7 +448,7 @@ const Calendario = () => {
 
       {/* Modal para agregar evento */}
       {showEventModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/30 bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-2xl font-bold text-gray-800">Nuevo Evento</h3>

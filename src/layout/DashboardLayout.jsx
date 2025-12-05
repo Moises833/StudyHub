@@ -1,12 +1,16 @@
 import { useState, useRef, useEffect } from "react";
 import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
 import { getCurrentUser, logoutUser } from "../helpers/auth";
+import { speak, cancelSpeech } from "../helpers/speech";
 
 const DashboardLayout = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [voiceEnabled, setVoiceEnabled] = useState(() => {
+    return localStorage.getItem("studyhub_voice_enabled") === "true";
+  });
   const menuRef = useRef(null);
 
   const user = getCurrentUser();
@@ -37,6 +41,31 @@ const DashboardLayout = () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [isMenuOpen]);
+
+  // Announce page changes
+  useEffect(() => {
+    if (voiceEnabled) {
+      let pageName = "Dashboard";
+      if (location.pathname.includes("/proyectos")) pageName = "Proyectos";
+      if (location.pathname.includes("/tareas")) pageName = "Tareas";
+      if (location.pathname.includes("/calendario")) pageName = "Calendario";
+      if (location.pathname.includes("/perfil")) pageName = "Perfil";
+
+      // Small delay to ensure navigation is perceived
+      setTimeout(() => speak(`Estás en ${pageName}`), 500);
+    }
+  }, [location.pathname, voiceEnabled]);
+
+  const toggleVoice = () => {
+    const newState = !voiceEnabled;
+    setVoiceEnabled(newState);
+    localStorage.setItem("studyhub_voice_enabled", newState);
+    if (newState) {
+      speak("Asistente de voz activado");
+    } else {
+      cancelSpeech();
+    }
+  };
 
   const handleLogout = () => {
     logoutUser();
@@ -87,7 +116,9 @@ const DashboardLayout = () => {
                   )}
                 </svg>
               </button>
-              <h1 className="text-xl sm:text-2xl font-bold text-sky-900">StudyHub</h1>
+              <Link to="/dashboard">
+                <h1 className="text-xl sm:text-2xl font-bold text-sky-900">StudyHub</h1>
+              </Link>
             </div>
             <div className="flex items-center gap-4">
               <div className="relative" ref={menuRef}>
@@ -143,6 +174,19 @@ const DashboardLayout = () => {
                         />
                       </svg>
                       Ver Perfil
+                    </button>
+                    <button
+                      onClick={toggleVoice}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-left text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                    >
+                      <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        {voiceEnabled ? (
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                        ) : (
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+                        )}
+                      </svg>
+                      {voiceEnabled ? "Desactivar Voz" : "Activar Voz"}
                     </button>
                     <button
                       onClick={handleLogout}

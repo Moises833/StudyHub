@@ -1,14 +1,16 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { getAllTasksByUser, toggleTask, deleteTask, getProjectsByUser, updateProject } from "../../helpers/projects";
+import { getAllTasksByUser, toggleTask, deleteTask, getProjectsByUser, updateProject } from "../../helpers/projects";
 import { getCurrentUser } from "../../helpers/auth";
+import { speak } from "../../helpers/speech";
 
 const Tareas = () => {
     const [searchTerm, setSearchTerm] = useState("");
     const [filterStatus, setFilterStatus] = useState("todos");
     const [tareas, setTareas] = useState([]);
     const [currentUser, setCurrentUser] = useState(null);
-        const [proyectos, setProyectos] = useState([]);
+    const [proyectos, setProyectos] = useState([]);
 
     useEffect(() => {
         const user = getCurrentUser();
@@ -46,56 +48,65 @@ const Tareas = () => {
         const data = getAllTasksByUser(userId);
         // Mostrar todas las tareas de los proyectos a los que el usuario tiene acceso
         setTareas(data);
-            // Cargar proyectos accesibles que no tienen tareas (para permitir marcarlos como completados desde esta vista)
-            const p = getProjectsByUser(userId) || [];
-            const proyectosSinTareas = p.filter(proj => !proj.tareas || proj.tareas.length === 0);
-            setProyectos(proyectosSinTareas);
+        // Cargar proyectos accesibles que no tienen tareas (para permitir marcarlos como completados desde esta vista)
+        const p = getProjectsByUser(userId) || [];
+        const proyectosSinTareas = p.filter(proj => !proj.tareas || proj.tareas.length === 0);
+        setProyectos(proyectosSinTareas);
     };
 
     const handleToggleTask = (projectId, taskId) => {
-        toggleTask(projectId, taskId);
+        const updatedProject = toggleTask(projectId, taskId);
         if (currentUser) loadTasks(currentUser.id);
+
+        // Find the task to announce status
+        if (updatedProject) {
+            const task = updatedProject.tareas.find(t => t.id === taskId);
+            if (task) {
+                speak(task.completada ? "Tarea completada" : "Tarea marcada como pendiente");
+            }
+        }
     };
 
     const handleDeleteTask = (projectId, taskId) => {
         if (window.confirm("¿Eliminar tarea?")) {
             deleteTask(projectId, taskId);
             if (currentUser) loadTasks(currentUser.id);
+            speak("Tarea eliminada");
         }
     };
 
-        const handleToggleProject = (projectId) => {
-            // marcar proyecto como completado/activo
-            const all = getProjectsByUser(currentUser?.id);
-            const proyecto = all.find(p => p.id === projectId);
-            if (!proyecto) return;
+    const handleToggleProject = (projectId) => {
+        // marcar proyecto como completado/activo
+        const all = getProjectsByUser(currentUser?.id);
+        const proyecto = all.find(p => p.id === projectId);
+        if (!proyecto) return;
 
-            const isCompleted = proyecto.progreso === 100 || proyecto.estado === 'completado';
-            if (isCompleted) {
-                // if the project had no tasks originally and we created a synthetic one, remove it
-                if (!proyecto.tareas || proyecto.tareas.length === 1 && proyecto.tareas[0] && String(proyecto.tareas[0].nombre || '').startsWith('(Proyecto)')) {
-                    updateProject(projectId, { progreso: 0, estado: 'activo', tareas: [], tareasTotales: 0, tareasCompletadas: 0 });
-                } else {
-                    updateProject(projectId, { progreso: 0, estado: 'activo' });
-                }
+        const isCompleted = proyecto.progreso === 100 || proyecto.estado === 'completado';
+        if (isCompleted) {
+            // if the project had no tasks originally and we created a synthetic one, remove it
+            if (!proyecto.tareas || proyecto.tareas.length === 1 && proyecto.tareas[0] && String(proyecto.tareas[0].nombre || '').startsWith('(Proyecto)')) {
+                updateProject(projectId, { progreso: 0, estado: 'activo', tareas: [], tareasTotales: 0, tareasCompletadas: 0 });
             } else {
-                // If project has no tasks, create a synthetic completed task so counts reflect completion
-                if (!proyecto.tareas || proyecto.tareas.length === 0) {
-                    const synthetic = {
-                        id: Date.now(),
-                        nombre: `(Proyecto) ${proyecto.nombre} - completado`,
-                        completada: true,
-                        createdAt: new Date().toISOString()
-                    };
-                    updateProject(projectId, { tareas: [synthetic], tareasTotales: 1, tareasCompletadas: 1, progreso: 100, estado: 'completado' });
-                } else {
-                    // For projects with existing tasks, mark progress to 100 (but do not alter tasks)
-                    updateProject(projectId, { progreso: 100, estado: 'completado', tareasCompletadas: proyecto.tareasTotales || proyecto.tareas.filter(t => t.completada).length });
-                }
+                updateProject(projectId, { progreso: 0, estado: 'activo' });
             }
+        } else {
+            // If project has no tasks, create a synthetic completed task so counts reflect completion
+            if (!proyecto.tareas || proyecto.tareas.length === 0) {
+                const synthetic = {
+                    id: Date.now(),
+                    nombre: `(Proyecto) ${proyecto.nombre} - completado`,
+                    completada: true,
+                    createdAt: new Date().toISOString()
+                };
+                updateProject(projectId, { tareas: [synthetic], tareasTotales: 1, tareasCompletadas: 1, progreso: 100, estado: 'completado' });
+            } else {
+                // For projects with existing tasks, mark progress to 100 (but do not alter tasks)
+                updateProject(projectId, { progreso: 100, estado: 'completado', tareasCompletadas: proyecto.tareasTotales || proyecto.tareas.filter(t => t.completada).length });
+            }
+        }
 
-            if (currentUser) loadTasks(currentUser.id);
-        };
+        if (currentUser) loadTasks(currentUser.id);
+    };
 
     const getStatusColor = (completada) => {
         return completada ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700";
@@ -173,7 +184,7 @@ const Tareas = () => {
                     <select
                         value={filterStatus}
                         onChange={(e) => setFilterStatus(e.target.value)}
-                        className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
+                        className="cursor-pointer px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
                     >
                         <option value="todos">Todos los estados</option>
                         <option value="pendiente">Pendientes</option>
@@ -224,6 +235,9 @@ const Tareas = () => {
                                         Proyecto
                                     </th>
                                     <th className="px-6 py-4 text-sm font-semibold text-gray-700">
+                                        Creador
+                                    </th>
+                                    <th className="px-6 py-4 text-sm font-semibold text-gray-700">
                                         Estado
                                     </th>
                                     <th className="px-6 py-4 text-sm font-semibold text-gray-700">
@@ -254,6 +268,9 @@ const Tareas = () => {
                                         <td className="px-6 py-4 text-sm text-gray-600">
                                             <span className="text-sm text-gray-600">Proyecto</span>
                                         </td>
+                                        <td className="px-6 py-4 text-sm text-gray-600">
+                                            -
+                                        </td>
                                         <td className="px-6 py-4">
                                             <span
                                                 className={`px-2 py-1 rounded-full text-xs font-medium ${proyecto.progreso === 100 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}
@@ -279,16 +296,23 @@ const Tareas = () => {
                                 {filteredTareas.map((tarea) => (
                                     <tr key={tarea.id} className="hover:bg-gray-50 transition-colors">
                                         <td className="px-6 py-4">
-                                            <div className="flex items-center gap-3">
+                                            <div className="flex items-start gap-3">
                                                 <input
                                                     type="checkbox"
                                                     checked={tarea.completada}
                                                     onChange={() => handleToggleTask(tarea.projectId, tarea.id)}
-                                                    className="w-4 h-4 text-sky-600 rounded focus:ring-sky-500 cursor-pointer"
+                                                    className="w-4 h-4 mt-1 text-sky-600 rounded focus:ring-sky-500 cursor-pointer"
                                                 />
-                                                <p className={`font-medium ${tarea.completada ? 'line-through text-gray-400' : 'text-gray-800'}`}>
-                                                    {tarea.nombre}
-                                                </p>
+                                                <div>
+                                                    <p className={`font-medium ${tarea.completada ? 'line-through text-gray-400' : 'text-gray-800'}`}>
+                                                        {tarea.nombre}
+                                                    </p>
+                                                    {tarea.descripcion && (
+                                                        <p className={`text-xs mt-1 ${tarea.completada ? 'text-gray-300' : 'text-gray-500'}`}>
+                                                            {tarea.descripcion}
+                                                        </p>
+                                                    )}
+                                                </div>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-600">
@@ -296,14 +320,18 @@ const Tareas = () => {
                                                 {tarea.projectName}
                                             </Link>
                                         </td>
-                                        <td className="px-6 py-4">
-                                            <span
-                                                className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
+                                        <td className="px-6 py-4 text-sm text-gray-600">
+                                            {tarea.creador || "Desconocido"}
+                                        </td>
+                                        <td className=" px-6 py-4">
+                                            <button
+                                                onClick={() => handleToggleTask(tarea.projectId, tarea.id)}
+                                                className={`cursor-pointer px-2 py-1 rounded-full text-xs font-medium transition-opacity hover:opacity-80 ${getStatusColor(
                                                     tarea.completada
                                                 )}`}
                                             >
                                                 {getStatusLabel(tarea.completada)}
-                                            </span>
+                                            </button>
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-600">
                                             {formatDate(tarea.createdAt)}
@@ -312,7 +340,7 @@ const Tareas = () => {
                                             <div className="flex gap-2">
                                                 <button
                                                     onClick={() => handleDeleteTask(tarea.projectId, tarea.id)}
-                                                    className="text-red-600 hover:text-red-800 font-medium text-sm"
+                                                    className="cursor-pointer text-red-600 hover:text-red-800 font-medium text-sm"
                                                 >
                                                     Eliminar
                                                 </button>
