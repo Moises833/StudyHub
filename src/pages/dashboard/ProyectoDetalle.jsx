@@ -11,7 +11,6 @@ import {
     addProjectFile
 } from "../../helpers/projects";
 import { getAllUsers, getCurrentUser } from "../../helpers/auth";
-import { speak } from "../../helpers/speech";
 
 const ProyectoDetalle = () => {
     const { id } = useParams();
@@ -21,7 +20,6 @@ const ProyectoDetalle = () => {
 
     // Estados para formularios
     const [newTask, setNewTask] = useState("");
-    const [taskDescription, setTaskDescription] = useState("");
     const [collaboratorEmail, setCollaboratorEmail] = useState("");
     const [msg, setMsg] = useState({ type: "", content: "" });
     const [selectedFile, setSelectedFile] = useState(null);
@@ -57,32 +55,20 @@ const ProyectoDetalle = () => {
         e.preventDefault();
         if (!newTask.trim()) return;
 
-        const updatedProject = addTask(proyecto.id, {
-            nombre: newTask,
-            descripcion: taskDescription,
-            creador: currentUser ? currentUser.name : "Desconocido"
-        });
+        const updatedProject = addTask(proyecto.id, { nombre: newTask });
         setProyecto(updatedProject);
         setNewTask("");
-        setTaskDescription("");
-        speak(`Tarea ${newTask} agregada`);
     };
 
     const handleToggleTask = (taskId) => {
         const updatedProject = toggleTask(proyecto.id, taskId);
         setProyecto(updatedProject);
-
-        const task = updatedProject.tareas.find(t => t.id === taskId);
-        if (task) {
-            speak(task.completada ? "Tarea completada" : "Tarea pendiente");
-        }
     };
 
     const handleDeleteTask = (taskId) => {
         if (window.confirm("¿Eliminar tarea?")) {
             const updatedProject = deleteTask(proyecto.id, taskId);
             setProyecto(updatedProject);
-            speak("Tarea eliminada");
         }
     };
 
@@ -114,7 +100,6 @@ const ProyectoDetalle = () => {
             setCollaboratorEmail("");
             setMsg({ type: "success", content: "Colaborador agregado correctamente" });
             setTimeout(() => setMsg({ type: "", content: "" }), 3000);
-            speak(`Colaborador ${userToAdd.name} agregado`);
         }
     };
 
@@ -122,14 +107,13 @@ const ProyectoDetalle = () => {
         if (window.confirm("¿Eliminar colaborador?")) {
             const updatedProject = removeCollaborator(proyecto.id, userId);
             setProyecto(updatedProject);
-            speak("Colaborador eliminado");
         }
     };
 
     const handleFileChange = (e) => {
         const f = e.target.files && e.target.files[0];
         setSelectedFile(f || null);
-        try { if (typeof console !== 'undefined' && console.debug) console.debug('[studyhub] handleFileChange selected:', f); } catch (e) { void e; }
+        try { if (typeof console !== 'undefined' && console.debug) console.debug('[studyhub] handleFileChange selected:', f); } catch(e){ void e; }
         setUploadProgress(0);
     };
 
@@ -140,10 +124,10 @@ const ProyectoDetalle = () => {
                 try {
                     fileInputRef.current.click();
                 } catch (err) {
-                    try { console.error('[studyhub] could not open file selector', err); } catch (e) { void e; }
+                    try { console.error('[studyhub] could not open file selector', err); } catch(e){ void e; }
                 }
             } else {
-                try { console.warn('[studyhub] fileInputRef not ready'); } catch (e) { void e; }
+                try { console.warn('[studyhub] fileInputRef not ready'); } catch(e){ void e; }
             }
             return;
         }
@@ -245,7 +229,7 @@ const ProyectoDetalle = () => {
                                 onClick={() => {
                                     if (uploading) return;
                                     if (!selectedFile) {
-                                        try { fileInputRef.current && fileInputRef.current.click(); } catch (e) { void e; }
+                                        try { fileInputRef.current && fileInputRef.current.click(); } catch(e) { void e; }
                                         return;
                                     }
                                     startUpload();
@@ -267,7 +251,7 @@ const ProyectoDetalle = () => {
                                 <ul className="space-y-2">
                                     {proyecto.files.map(f => (
                                         <li key={f.id} className="flex items-center justify-between">
-                                            <div className="truncate pr-2">{f.name} <span className="text-gray-400">({Math.round((f.size || 0) / 1024)} KB)</span></div>
+                                            <div className="truncate pr-2">{f.name} <span className="text-gray-400">({Math.round((f.size||0)/1024)} KB)</span></div>
                                             {f.dataUrl ? (
                                                 <a href={f.dataUrl} download={f.name} className="text-sky-600 hover:underline text-sm">Descargar</a>
                                             ) : (
@@ -324,67 +308,40 @@ const ProyectoDetalle = () => {
                             <h2 className="text-xl font-bold text-gray-800">Tareas</h2>
                         </div>
 
-                        <form onSubmit={handleAddTask} className="mb-6 space-y-3">
-                            <div>
-                                <input
-                                    type="text"
-                                    placeholder="Nombre de la tarea..."
-                                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-sky-500"
-                                    value={newTask}
-                                    onChange={(e) => setNewTask(e.target.value)}
-                                />
-                            </div>
-                            <div className="flex gap-2">
-                                <input
-                                    type="text"
-                                    placeholder="Descripción (opcional)..."
-                                    className="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-sky-500"
-                                    value={taskDescription}
-                                    onChange={(e) => setTaskDescription(e.target.value)}
-                                />
-                                <button
-                                    type="submit"
-                                    className="bg-sky-600 text-white px-6 py-2 rounded-lg hover:bg-sky-700 transition-colors"
-                                >
-                                    Agregar
-                                </button>
-                            </div>
+                        <form onSubmit={handleAddTask} className="mb-6 flex gap-2">
+                            <input
+                                type="text"
+                                placeholder="Nueva tarea..."
+                                className="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                                value={newTask}
+                                onChange={(e) => setNewTask(e.target.value)}
+                            />
+                            <button
+                                type="submit"
+                                className="bg-sky-600 text-white px-4 py-2 rounded-lg hover:bg-sky-700 transition-colors"
+                            >
+                                Agregar
+                            </button>
                         </form>
 
                         <div className="space-y-3">
                             {proyecto.tareas && proyecto.tareas.length > 0 ? (
                                 proyecto.tareas.map(tarea => (
-                                    <div key={tarea.id} className="flex items-start justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                                        <div className="flex items-start gap-3 flex-1">
+                                    <div key={tarea.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                                        <div className="flex items-center gap-3">
                                             <input
                                                 type="checkbox"
                                                 checked={tarea.completada}
                                                 onChange={() => handleToggleTask(tarea.id)}
-                                                className="w-5 h-5 mt-1 text-sky-600 rounded focus:ring-sky-500 cursor-pointer"
+                                                className="w-5 h-5 text-sky-600 rounded focus:ring-sky-500 cursor-pointer"
                                             />
-                                            <div className="flex-1">
-                                                <p className={`font-medium ${tarea.completada ? 'line-through text-gray-400' : 'text-gray-800'}`}>
-                                                    {tarea.nombre}
-                                                </p>
-                                                {tarea.descripcion && (
-                                                    <p className={`text-sm mt-1 ${tarea.completada ? 'text-gray-300' : 'text-gray-600'}`}>
-                                                        {tarea.descripcion}
-                                                    </p>
-                                                )}
-                                                <p className="text-xs text-gray-400 mt-1">
-                                                    Agregado por: {tarea.creador || "Desconocido"}
-                                                </p>
-                                            </div>
+                                            <span className={`${tarea.completada ? 'line-through text-gray-400' : 'text-gray-700'}`}>
+                                                {tarea.nombre}
+                                            </span>
                                         </div>
                                         <button
-                                            onClick={() => handleToggleTask(tarea.id)}
-                                            className={`cursor-pointer text-sm font-medium mr-2 ${tarea.completada ? 'text-yellow-600 hover:text-yellow-700' : 'text-green-600 hover:text-green-700'}`}
-                                        >
-                                            {tarea.completada ? "Reabrir" : "Completar"}
-                                        </button>
-                                        <button
                                             onClick={() => handleDeleteTask(tarea.id)}
-                                            className="cursor-pointer text-red-500 hover:text-red-700 p-1 ml-2"
+                                            className="text-red-500 hover:text-red-700 p-1"
                                         >
                                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />

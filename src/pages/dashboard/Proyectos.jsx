@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { getProjectsByUser, createProject, deleteProject, getAllProjects } from "../../helpers/projects";
+import { getProjectsByUser, createProject, deleteProject } from "../../helpers/projects";
 import { getCurrentUser } from "../../helpers/auth";
-import { speak } from "../../helpers/speech";
 
 const Proyectos = () => {
   const navigate = useNavigate();
@@ -55,13 +54,14 @@ const Proyectos = () => {
     e.preventDefault();
     if (!currentUser) return;
 
-    if (newProject.nombre && newProject.fechaEntrega) {
-      createProject({ ...newProject, userId: currentUser.id });
-      setProyectos(getAllProjects().filter(p => p.userId === currentUser.id)); // Recargar proyectos
-      setNewProject({ nombre: "", descripcion: "", fechaEntrega: "", estado: "activo" });
-      setIsModalOpen(false);
-      speak(`Proyecto ${newProject.nombre} creado exitosamente`);
-    }
+    createProject({
+      ...newProject,
+      userId: currentUser.id
+    });
+
+    loadProjects(currentUser.id);
+    setIsModalOpen(false);
+    setNewProject({ nombre: "", descripcion: "", fechaEntrega: "", estado: "activo" });
   };
 
   const handleDeleteProject = (e, projectId) => {
@@ -69,7 +69,6 @@ const Proyectos = () => {
     if (window.confirm("¿Estás seguro de que deseas eliminar este proyecto?")) {
       deleteProject(projectId);
       if (currentUser) loadProjects(currentUser.id);
-      speak("Proyecto eliminado");
     }
   };
 
@@ -241,7 +240,7 @@ const Proyectos = () => {
 
       {/* Modal Crear Proyecto */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6">
             <h2 className="text-2xl font-bold text-gray-800 mb-6">Nuevo Proyecto</h2>
             <form onSubmit={handleCreateProject}>
@@ -298,3 +297,4 @@ const Proyectos = () => {
 };
 
 export default Proyectos;
+
