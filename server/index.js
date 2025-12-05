@@ -1,5 +1,9 @@
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const bcrypt = require('bcrypt');
+const Joi = require('joi');
 const { Pool } = require('pg');
 require('dotenv').config();
 
@@ -7,8 +11,20 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 // Middleware
-app.use(cors());
+app.use(helmet());
+app.use(cors({
+    origin: 'http://localhost:5173',
+    optionsSuccessStatus: 200
+}));
 app.use(express.json());
+
+// Rate limiting
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // limit each IP to 100 requests per windowMs
+    message: 'Too many requests from this IP, please try again later'
+});
+app.use(limiter);
 
 // Database configuration
 const pool = new Pool({
@@ -56,8 +72,20 @@ app.get('/api/test-db', async (req, res) => {
     }
 });
 
+// Validation schema
+const registerSchema = Joi.object({
+    name: Joi.string().min(3).required(),
+    email: Joi.string().email().required(),
+    password: Joi.string().min(6).required()
+});
+
 // Register endpoint
 app.post('/api/register', async (req, res) => {
+    const { error } = registerSchema.validate(req.body);
+    if (error) {
+        return res.status(400).json({ success: false, message: error.details[0].message });
+    }
+
     const { name, email, password } = req.body;
     try {
         // Check if user exists
@@ -66,11 +94,14 @@ app.post('/api/register', async (req, res) => {
             return res.status(400).json({ success: false, message: 'El usuario ya existe' });
         }
 
+        // Hash password
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+
         // Insert new user
-        // Note: In production, password should be hashed!
         const newUser = await pool.query(
             'INSERT INTO usuarios ("NickName", "Email", "Password") VALUES ($1, $2, $3) RETURNING *',
-            [name, email, password]
+            [name, email, hashedPassword]
         );
 
         res.json({
@@ -92,10 +123,20 @@ app.post('/api/register', async (req, res) => {
 app.post('/api/login', async (req, res) => {
     const { email, password } = req.body;
     try {
-        const result = await pool.query('SELECT * FROM usuarios WHERE "Email" = $1 AND "Password" = $2', [email, password]);
+        const result = await pool.query('SELECT * FROM usuarios WHERE "Email" = $1', [email]);
 
         if (result.rows.length > 0) {
             const user = result.rows[0];
+            
+            // Verify password
+            const validPassword = await bcrypt.compare(password, user.Password);
+            if (!validPassword) {
+                return res.status(401).json({
+                    success: false,
+                    message: 'Credenciales inválidas'
+                });
+            }
+
             // Don't send password back
             delete user.Password;
             res.json({
