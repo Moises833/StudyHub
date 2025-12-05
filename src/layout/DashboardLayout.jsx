@@ -87,7 +87,9 @@ const DashboardLayout = () => {
                   )}
                 </svg>
               </button>
-              <h1 className="text-xl sm:text-2xl font-bold text-sky-900">StudyHub</h1>
+              <Link to="/dashboard">
+                <h1 className="cursor-pointer text-xl sm:text-2xl font-bold text-sky-900">StudyHub</h1>
+              </Link>
             </div>
             <div className="flex items-center gap-4">
               <div className="relative" ref={menuRef}>

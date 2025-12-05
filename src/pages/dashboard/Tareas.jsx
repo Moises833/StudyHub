@@ -8,7 +8,7 @@ const Tareas = () => {
     const [filterStatus, setFilterStatus] = useState("todos");
     const [tareas, setTareas] = useState([]);
     const [currentUser, setCurrentUser] = useState(null);
-        const [proyectos, setProyectos] = useState([]);
+    const [proyectos, setProyectos] = useState([]);
 
     useEffect(() => {
         const user = getCurrentUser();
@@ -46,10 +46,10 @@ const Tareas = () => {
         const data = getAllTasksByUser(userId);
         // Mostrar todas las tareas de los proyectos a los que el usuario tiene acceso
         setTareas(data);
-            // Cargar proyectos accesibles que no tienen tareas (para permitir marcarlos como completados desde esta vista)
-            const p = getProjectsByUser(userId) || [];
-            const proyectosSinTareas = p.filter(proj => !proj.tareas || proj.tareas.length === 0);
-            setProyectos(proyectosSinTareas);
+        // Cargar proyectos accesibles que no tienen tareas (para permitir marcarlos como completados desde esta vista)
+        const p = getProjectsByUser(userId) || [];
+        const proyectosSinTareas = p.filter(proj => !proj.tareas || proj.tareas.length === 0);
+        setProyectos(proyectosSinTareas);
     };
 
     const handleToggleTask = (projectId, taskId) => {
@@ -64,38 +64,38 @@ const Tareas = () => {
         }
     };
 
-        const handleToggleProject = (projectId) => {
-            // marcar proyecto como completado/activo
-            const all = getProjectsByUser(currentUser?.id);
-            const proyecto = all.find(p => p.id === projectId);
-            if (!proyecto) return;
+    const handleToggleProject = (projectId) => {
+        // marcar proyecto como completado/activo
+        const all = getProjectsByUser(currentUser?.id);
+        const proyecto = all.find(p => p.id === projectId);
+        if (!proyecto) return;
 
-            const isCompleted = proyecto.progreso === 100 || proyecto.estado === 'completado';
-            if (isCompleted) {
-                // if the project had no tasks originally and we created a synthetic one, remove it
-                if (!proyecto.tareas || proyecto.tareas.length === 1 && proyecto.tareas[0] && String(proyecto.tareas[0].nombre || '').startsWith('(Proyecto)')) {
-                    updateProject(projectId, { progreso: 0, estado: 'activo', tareas: [], tareasTotales: 0, tareasCompletadas: 0 });
-                } else {
-                    updateProject(projectId, { progreso: 0, estado: 'activo' });
-                }
+        const isCompleted = proyecto.progreso === 100 || proyecto.estado === 'completado';
+        if (isCompleted) {
+            // if the project had no tasks originally and we created a synthetic one, remove it
+            if (!proyecto.tareas || proyecto.tareas.length === 1 && proyecto.tareas[0] && String(proyecto.tareas[0].nombre || '').startsWith('(Proyecto)')) {
+                updateProject(projectId, { progreso: 0, estado: 'activo', tareas: [], tareasTotales: 0, tareasCompletadas: 0 });
             } else {
-                // If project has no tasks, create a synthetic completed task so counts reflect completion
-                if (!proyecto.tareas || proyecto.tareas.length === 0) {
-                    const synthetic = {
-                        id: Date.now(),
-                        nombre: `(Proyecto) ${proyecto.nombre} - completado`,
-                        completada: true,
-                        createdAt: new Date().toISOString()
-                    };
-                    updateProject(projectId, { tareas: [synthetic], tareasTotales: 1, tareasCompletadas: 1, progreso: 100, estado: 'completado' });
-                } else {
-                    // For projects with existing tasks, mark progress to 100 (but do not alter tasks)
-                    updateProject(projectId, { progreso: 100, estado: 'completado', tareasCompletadas: proyecto.tareasTotales || proyecto.tareas.filter(t => t.completada).length });
-                }
+                updateProject(projectId, { progreso: 0, estado: 'activo' });
             }
+        } else {
+            // If project has no tasks, create a synthetic completed task so counts reflect completion
+            if (!proyecto.tareas || proyecto.tareas.length === 0) {
+                const synthetic = {
+                    id: Date.now(),
+                    nombre: `(Proyecto) ${proyecto.nombre} - completado`,
+                    completada: true,
+                    createdAt: new Date().toISOString()
+                };
+                updateProject(projectId, { tareas: [synthetic], tareasTotales: 1, tareasCompletadas: 1, progreso: 100, estado: 'completado' });
+            } else {
+                // For projects with existing tasks, mark progress to 100 (but do not alter tasks)
+                updateProject(projectId, { progreso: 100, estado: 'completado', tareasCompletadas: proyecto.tareasTotales || proyecto.tareas.filter(t => t.completada).length });
+            }
+        }
 
-            if (currentUser) loadTasks(currentUser.id);
-        };
+        if (currentUser) loadTasks(currentUser.id);
+    };
 
     const getStatusColor = (completada) => {
         return completada ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700";
@@ -297,13 +297,14 @@ const Tareas = () => {
                                             </Link>
                                         </td>
                                         <td className="px-6 py-4">
-                                            <span
-                                                className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
+                                            <button
+                                                onClick={() => handleToggleTask(tarea.projectId, tarea.id)}
+                                                className={`cursor-pointer px-2 py-1 rounded-full text-xs font-medium transition-opacity hover:opacity-80 ${getStatusColor(
                                                     tarea.completada
                                                 )}`}
                                             >
                                                 {getStatusLabel(tarea.completada)}
-                                            </span>
+                                            </button>
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-600">
                                             {formatDate(tarea.createdAt)}
