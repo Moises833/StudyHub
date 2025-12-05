@@ -19,7 +19,8 @@ const ProyectoDetalle = () => {
     const [currentUser, setCurrentUser] = useState(null);
 
     // Estados para formularios
-    const [newTask, setNewTask] = useState("");
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [newTask, setNewTask] = useState({ nombre: "", descripcion: "" });
     const [collaboratorEmail, setCollaboratorEmail] = useState("");
     const [msg, setMsg] = useState({ type: "", content: "" });
     const [selectedFile, setSelectedFile] = useState(null);
@@ -53,11 +54,12 @@ const ProyectoDetalle = () => {
 
     const handleAddTask = (e) => {
         e.preventDefault();
-        if (!newTask.trim()) return;
+        if (!newTask.nombre.trim()) return;
 
-        const updatedProject = addTask(proyecto.id, { nombre: newTask });
+        const updatedProject = addTask(proyecto.id, newTask);
         setProyecto(updatedProject);
-        setNewTask("");
+        setNewTask({ nombre: "", descripcion: "" });
+        setIsModalOpen(false);
     };
 
     const handleToggleTask = (taskId) => {
@@ -113,7 +115,7 @@ const ProyectoDetalle = () => {
     const handleFileChange = (e) => {
         const f = e.target.files && e.target.files[0];
         setSelectedFile(f || null);
-        try { if (typeof console !== 'undefined' && console.debug) console.debug('[studyhub] handleFileChange selected:', f); } catch(e){ void e; }
+        try { if (typeof console !== 'undefined' && console.debug) console.debug('[studyhub] handleFileChange selected:', f); } catch (e) { void e; }
         setUploadProgress(0);
     };
 
@@ -124,10 +126,10 @@ const ProyectoDetalle = () => {
                 try {
                     fileInputRef.current.click();
                 } catch (err) {
-                    try { console.error('[studyhub] could not open file selector', err); } catch(e){ void e; }
+                    try { console.error('[studyhub] could not open file selector', err); } catch (e) { void e; }
                 }
             } else {
-                try { console.warn('[studyhub] fileInputRef not ready'); } catch(e){ void e; }
+                try { console.warn('[studyhub] fileInputRef not ready'); } catch (e) { void e; }
             }
             return;
         }
@@ -229,7 +231,7 @@ const ProyectoDetalle = () => {
                                 onClick={() => {
                                     if (uploading) return;
                                     if (!selectedFile) {
-                                        try { fileInputRef.current && fileInputRef.current.click(); } catch(e) { void e; }
+                                        try { fileInputRef.current && fileInputRef.current.click(); } catch (e) { void e; }
                                         return;
                                     }
                                     startUpload();
@@ -251,7 +253,7 @@ const ProyectoDetalle = () => {
                                 <ul className="space-y-2">
                                     {proyecto.files.map(f => (
                                         <li key={f.id} className="flex items-center justify-between">
-                                            <div className="truncate pr-2">{f.name} <span className="text-gray-400">({Math.round((f.size||0)/1024)} KB)</span></div>
+                                            <div className="truncate pr-2">{f.name} <span className="text-gray-400">({Math.round((f.size || 0) / 1024)} KB)</span></div>
                                             {f.dataUrl ? (
                                                 <a href={f.dataUrl} download={f.name} className="text-sky-600 hover:underline text-sm">Descargar</a>
                                             ) : (
@@ -306,38 +308,38 @@ const ProyectoDetalle = () => {
                     <div className="bg-white rounded-xl shadow-lg p-6">
                         <div className="flex justify-between items-center mb-6">
                             <h2 className="text-xl font-bold text-gray-800">Tareas</h2>
-                        </div>
-
-                        <form onSubmit={handleAddTask} className="mb-6 flex gap-2">
-                            <input
-                                type="text"
-                                placeholder="Nueva tarea..."
-                                className="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-sky-500"
-                                value={newTask}
-                                onChange={(e) => setNewTask(e.target.value)}
-                            />
                             <button
-                                type="submit"
-                                className="bg-sky-600 text-white px-4 py-2 rounded-lg hover:bg-sky-700 transition-colors"
+                                onClick={() => setIsModalOpen(true)}
+                                className="bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors"
                             >
-                                Agregar
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                </svg>
+                                Nueva Tarea
                             </button>
-                        </form>
+                        </div>
 
                         <div className="space-y-3">
                             {proyecto.tareas && proyecto.tareas.length > 0 ? (
                                 proyecto.tareas.map(tarea => (
                                     <div key={tarea.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                                        <div className="flex items-center gap-3">
+                                        <div className="flex items-center gap-3 flex-1">
                                             <input
                                                 type="checkbox"
                                                 checked={tarea.completada}
                                                 onChange={() => handleToggleTask(tarea.id)}
-                                                className="w-5 h-5 text-sky-600 rounded focus:ring-sky-500 cursor-pointer"
+                                                className="w-5 h-5 text-sky-600 rounded focus:ring-sky-500 cursor-pointer flex-shrink-0"
                                             />
-                                            <span className={`${tarea.completada ? 'line-through text-gray-400' : 'text-gray-700'}`}>
-                                                {tarea.nombre}
-                                            </span>
+                                            <div className="flex flex-col">
+                                                <span className={`${tarea.completada ? 'line-through text-gray-400' : 'text-gray-700'} font-medium`}>
+                                                    {tarea.nombre}
+                                                </span>
+                                                {tarea.descripcion && (
+                                                    <span className={`text-sm ${tarea.completada ? 'text-gray-300' : 'text-gray-500'}`}>
+                                                        {tarea.descripcion}
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
                                         <button
                                             onClick={() => handleDeleteTask(tarea.id)}
@@ -462,6 +464,52 @@ const ProyectoDetalle = () => {
                     </div>
                 </div>
             </div>
+            {/* Modal Nueva Tarea */}
+            {isModalOpen && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6">
+                        <h2 className="text-2xl font-bold text-gray-800 mb-6">Nueva Tarea</h2>
+                        <form onSubmit={handleAddTask}>
+                            <div className="mb-4">
+                                <label className="block text-gray-700 text-sm font-medium mb-2">Nombre de la Tarea</label>
+                                <input
+                                    type="text"
+                                    required
+                                    className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-sky-500 focus:outline-none"
+                                    value={newTask.nombre}
+                                    onChange={e => setNewTask({ ...newTask, nombre: e.target.value })}
+                                    placeholder="Ej: Investigar tema..."
+                                />
+                            </div>
+                            <div className="mb-4">
+                                <label className="block text-gray-700 text-sm font-medium mb-2">Descripción (Opcional)</label>
+                                <textarea
+                                    className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-sky-500 focus:outline-none"
+                                    rows="3"
+                                    value={newTask.descripcion}
+                                    onChange={e => setNewTask({ ...newTask, descripcion: e.target.value })}
+                                    placeholder="Detalles adicionales..."
+                                ></textarea>
+                            </div>
+                            <div className="flex gap-3 justify-end mt-6">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsModalOpen(false)}
+                                    className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="px-4 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition-colors"
+                                >
+                                    Agregar Tarea
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

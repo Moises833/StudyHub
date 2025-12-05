@@ -284,11 +284,18 @@ const Tareas = () => {
                                                     type="checkbox"
                                                     checked={tarea.completada}
                                                     onChange={() => handleToggleTask(tarea.projectId, tarea.id)}
-                                                    className="w-4 h-4 text-sky-600 rounded focus:ring-sky-500 cursor-pointer"
+                                                    className="w-4 h-4 text-sky-600 rounded focus:ring-sky-500 cursor-pointer flex-shrink-0"
                                                 />
-                                                <p className={`font-medium ${tarea.completada ? 'line-through text-gray-400' : 'text-gray-800'}`}>
-                                                    {tarea.nombre}
-                                                </p>
+                                                <div className="flex flex-col">
+                                                    <p className={`font-medium ${tarea.completada ? 'line-through text-gray-400' : 'text-gray-800'}`}>
+                                                        {tarea.nombre}
+                                                    </p>
+                                                    {tarea.descripcion && (
+                                                        <p className={`text-xs ${tarea.completada ? 'text-gray-300' : 'text-gray-500'}`}>
+                                                            {tarea.descripcion}
+                                                        </p>
+                                                    )}
+                                                </div>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-600">
